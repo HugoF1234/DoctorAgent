@@ -195,22 +195,4 @@ Agent : [Analyse avec ReAct]
 - **PyPDF2** : Traitement des fichiers PDF
 - **Python** : Langage de programmation
 
-## Contribution
-
-Ce projet est développé dans le cadre d'un projet académique. Pour contribuer :
-
-1. Fork le projet
-2. Créer une branche pour votre fonctionnalité (`git checkout -b feature/AmazingFeature`)
-3. Commit vos changements (`git commit -m 'Add some AmazingFeature'`)
-4. Push vers la branche (`git push origin feature/AmazingFeature`)
-5. Ouvrir une Pull Request
-
-## Références
-
-- [Documentation Streamlit](https://docs.streamlit.io/)
-- [Google Gemini API](https://ai.google.dev/docs)
-- Techniques de raisonnement : Chain of Thought, Tree of Thoughts, ReAct, Self-Correction
-
-## Licence
-
-Ce projet est développé dans le cadre d'un projet académique.
+Realisé par Matthieu HOUETTE, Victor LESTRADE et Hugo FOUAN
