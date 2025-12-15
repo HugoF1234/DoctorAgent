@@ -1,16 +1,9 @@
-"""
-Module contenant les implémentations des techniques de raisonnement
-"""
-
 class ReasoningTechniques:
-    """Classe utilitaire pour les techniques de raisonnement"""
     
     def __init__(self, model):
-        """Initialise avec le modèle LLM"""
         self.model = model
     
     def chain_of_thought(self, prompt: str) -> str:
-        """Implémente Chain of Thought"""
         cot_prompt = f"""
         {prompt}
         
@@ -23,7 +16,6 @@ class ReasoningTechniques:
         return response.text
     
     def tree_of_thoughts(self, prompt: str, num_branches: int = 3) -> list:
-        """Implémente Tree of Thoughts"""
         branches = []
         
         for i in range(num_branches):
@@ -38,7 +30,6 @@ class ReasoningTechniques:
                 "solution": response.text
             })
         
-        # Évaluation et élagage
         evaluation_prompt = f"""
         Évalue ces {num_branches} pistes de solutions et garde seulement la meilleure:
         
@@ -56,7 +47,6 @@ class ReasoningTechniques:
         }
     
     def react_loop(self, initial_prompt: str, max_iterations: int = 3) -> dict:
-        """Implémente la boucle ReAct"""
         history = []
         
         for i in range(max_iterations):
@@ -81,8 +71,6 @@ class ReasoningTechniques:
         }
     
     def self_correction(self, initial_response: str, context: str) -> dict:
-        """Implémente Self-Correction"""
-        # Critique
         critique_prompt = f"""
         Critique cette réponse et identifie les erreurs:
         
@@ -97,7 +85,6 @@ class ReasoningTechniques:
         
         critique = self.model.generate_content(critique_prompt)
         
-        # Correction
         correction_prompt = f"""
         Réponse initiale:
         {initial_response}
@@ -115,4 +102,3 @@ class ReasoningTechniques:
             "critique": critique.text,
             "corrected": corrected.text
         }
-

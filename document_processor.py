@@ -1,18 +1,12 @@
-"""
-Module pour traiter les documents uploadés (PDF, texte)
-"""
-
 import PyPDF2
 import io
 from typing import List, Dict
 
 def extract_text_from_pdf(file) -> str:
-    """Extrait le texte d'un fichier PDF"""
     try:
-        # Pour les fichiers Streamlit, utiliser BytesIO
         if hasattr(file, 'read'):
             file_bytes = file.read()
-            file.seek(0)  # Réinitialiser pour les prochaines lectures
+            file.seek(0)
             pdf_file = io.BytesIO(file_bytes)
         else:
             pdf_file = file
@@ -27,11 +21,9 @@ def extract_text_from_pdf(file) -> str:
         return f"Erreur lors de l'extraction du PDF : {str(e)}"
 
 def extract_text_from_txt(file) -> str:
-    """Extrait le texte d'un fichier texte"""
     try:
-        # Lire le fichier en mode texte
         if hasattr(file, 'read'):
-            file.seek(0)  # Réinitialiser le pointeur
+            file.seek(0)
             text = file.read()
             if isinstance(text, bytes):
                 text = text.decode('utf-8')
@@ -44,16 +36,9 @@ def extract_text_from_txt(file) -> str:
         return f"Erreur lors de la lecture du fichier texte : {str(e)}"
 
 def process_uploaded_file(uploaded_file) -> Dict[str, str]:
-    """
-    Traite un fichier uploadé et retourne son contenu
-    
-    Returns:
-        Dict avec 'name', 'type', 'content'
-    """
     file_name = uploaded_file.name
     file_type = file_name.split('.')[-1].lower() if '.' in file_name else 'unknown'
     
-    # Réinitialiser le pointeur du fichier
     uploaded_file.seek(0)
     
     if file_type == 'pdf':
@@ -70,9 +55,7 @@ def process_uploaded_file(uploaded_file) -> Dict[str, str]:
     }
 
 def process_multiple_files(uploaded_files: List) -> List[Dict[str, str]]:
-    """Traite plusieurs fichiers uploadés"""
     processed_files = []
     for uploaded_file in uploaded_files:
         processed_files.append(process_uploaded_file(uploaded_file))
     return processed_files
-

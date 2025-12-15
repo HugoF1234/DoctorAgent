@@ -1,24 +1,15 @@
-"""
-Agent de Diagnostic Médical
-Implémente les différentes techniques de raisonnement pour le diagnostic
-"""
-
 import google.generativeai as genai
 from reasoning import ReasoningTechniques
 import json
 import re
 
 class DiagnosticAgent:
-    """Agent de diagnostic médical utilisant des techniques de raisonnement avancées"""
     
     def __init__(self, api_key: str):
-        """Initialise l'agent avec la clé API Gemini"""
         genai.configure(api_key=api_key)
         
-        # Lister les modèles disponibles et utiliser le premier compatible
         try:
             models = genai.list_models()
-            # Chercher un modèle compatible avec generateContent
             model_name = None
             for model in models:
                 if 'generateContent' in model.supported_generation_methods:
@@ -28,14 +19,11 @@ class DiagnosticAgent:
             if model_name:
                 self.model = genai.GenerativeModel(model_name)
             else:
-                # Fallback: utiliser le modèle par défaut
                 self.model = genai.GenerativeModel()
         except Exception as e:
-            # En cas d'erreur, essayer avec 'gemini-pro' directement
             try:
                 self.model = genai.GenerativeModel('gemini-pro')
             except:
-                # Dernier recours: modèle par défaut
                 self.model = genai.GenerativeModel()
         
         self.reasoning = ReasoningTechniques(self.model)
@@ -43,25 +31,10 @@ class DiagnosticAgent:
     def process_user_input(self, user_input: str, reasoning_technique: str, 
                           conversation_history: list, diagnosis_state: dict, 
                           documents: list = None) -> dict:
-        """
-        Traite l'entrée utilisateur avec la technique de raisonnement spécifiée
         
-        Args:
-            user_input: Message de l'utilisateur
-            reasoning_technique: Technique à utiliser ('react', 'cot', 'tot', 'self_correction', 'hybrid')
-            conversation_history: Historique de la conversation
-            diagnosis_state: État actuel du diagnostic
-            documents: Liste de documents (dict avec 'name', 'type', 'content')
-            
-        Returns:
-            Dict avec 'message', 'reasoning_details', et 'diagnosis_state'
-        """
-        
-        # Extraire les symptômes de l'entrée utilisateur
         symptoms = self._extract_symptoms(user_input, diagnosis_state["symptoms"])
         diagnosis_state["symptoms"].extend(symptoms)
         
-        # Appliquer la technique de raisonnement appropriée
         if reasoning_technique == "react":
             return self._react_reasoning(user_input, conversation_history, diagnosis_state, documents)
         elif reasoning_technique == "cot":
@@ -76,7 +49,6 @@ class DiagnosticAgent:
             return self._react_reasoning(user_input, conversation_history, diagnosis_state, documents)
     
     def _extract_symptoms(self, user_input: str, existing_symptoms: list) -> list:
-        """Extrait les symptômes mentionnés dans l'entrée utilisateur"""
         prompt = f"""
         Analyse ce message et extrais uniquement les symptômes médicaux mentionnés.
         Liste les symptômes sous forme de liste simple, sans explication.
@@ -101,12 +73,9 @@ class DiagnosticAgent:
     
     def _react_reasoning(self, user_input: str, conversation_history: list, 
                         diagnosis_state: dict, documents: list = None) -> dict:
-        """Implémente le raisonnement ReAct (Reason + Act)"""
         
-        # Construire le contexte
         context = self._build_context(conversation_history, diagnosis_state, documents)
         
-        # Prompt ReAct
         prompt = f"""
         Tu es un agent de diagnostic médical expert. Utilise la méthode ReAct (Reason + Act).
         
@@ -134,11 +103,9 @@ class DiagnosticAgent:
         response = self.model.generate_content(prompt)
         response_text = response.text
         
-        # Parser la réponse ReAct
         reasoning_details = self._parse_react_response(response_text)
         message = reasoning_details.get("RESPONSE", response_text)
         
-        # Mettre à jour les hypothèses si présentes
         if "hypotheses" in reasoning_details:
             diagnosis_state["hypotheses"] = reasoning_details["hypotheses"]
         
@@ -150,7 +117,6 @@ class DiagnosticAgent:
     
     def _cot_reasoning(self, user_input: str, conversation_history: list, 
                       diagnosis_state: dict, documents: list = None) -> dict:
-        """Implémente le Chain of Thought (CoT)"""
         
         context = self._build_context(conversation_history, diagnosis_state, documents)
         
@@ -177,7 +143,6 @@ class DiagnosticAgent:
         response = self.model.generate_content(prompt)
         response_text = response.text
         
-        # Extraire le raisonnement et la réponse finale
         reasoning_details = self._extract_cot_reasoning(response_text)
         
         return {
@@ -188,7 +153,6 @@ class DiagnosticAgent:
     
     def _tot_reasoning(self, user_input: str, conversation_history: list, 
                       diagnosis_state: dict, documents: list = None) -> dict:
-        """Implémente le Tree of Thoughts (ToT)"""
         
         context = self._build_context(conversation_history, diagnosis_state, documents)
         
@@ -224,10 +188,8 @@ class DiagnosticAgent:
         response = self.model.generate_content(prompt)
         response_text = response.text
         
-        # Parser les hypothèses
         reasoning_details = self._parse_tot_response(response_text)
         
-        # Mettre à jour les hypothèses dans l'état
         if "hypotheses" in reasoning_details:
             diagnosis_state["hypotheses"] = reasoning_details["hypotheses"]
         
@@ -239,11 +201,9 @@ class DiagnosticAgent:
     
     def _self_correction_reasoning(self, user_input: str, conversation_history: list, 
                                   diagnosis_state: dict, documents: list = None) -> dict:
-        """Implémente le Self-Correction (Réflexion)"""
         
         context = self._build_context(conversation_history, diagnosis_state, documents)
         
-        # Étape 1: Génération initiale
         initial_prompt = f"""
         CONTEXTE:
         {context}
@@ -257,7 +217,6 @@ class DiagnosticAgent:
         initial_response = self.model.generate_content(initial_prompt)
         initial_text = initial_response.text
         
-        # Étape 2: Auto-critique
         critique_prompt = f"""
         Tu es un agent de diagnostic médical. Critique cette première analyse et identifie:
         1. Les erreurs potentielles (hallucinations, logique incorrecte)
@@ -280,7 +239,6 @@ class DiagnosticAgent:
         critique_response = self.model.generate_content(critique_prompt)
         critique_text = critique_response.text
         
-        # Étape 3: Génération corrigée
         corrected_prompt = f"""
         PREMIÈRE ANALYSE:
         {initial_text}
@@ -311,17 +269,12 @@ class DiagnosticAgent:
     
     def _hybrid_reasoning(self, user_input: str, conversation_history: list, 
                          diagnosis_state: dict, documents: list = None) -> dict:
-        """Combine plusieurs techniques de raisonnement"""
         
-        # Utilise CoT pour l'analyse initiale
         cot_result = self._cot_reasoning(user_input, conversation_history, diagnosis_state, documents)
         
-        # Utilise ToT pour générer des hypothèses
         tot_result = self._tot_reasoning(user_input, conversation_history, diagnosis_state, documents)
         
-        # Utilise Self-Correction pour affiner
         if tot_result["reasoning_details"].get("hypotheses"):
-            # Construire un prompt de synthèse
             synthesis_prompt = f"""
             Synthétise ces analyses pour donner une réponse finale cohérente au patient.
             
@@ -349,7 +302,6 @@ class DiagnosticAgent:
         return cot_result
     
     def _build_context(self, conversation_history: list, diagnosis_state: dict, documents: list = None) -> str:
-        """Construit le contexte à partir de l'historique, de l'état et des documents"""
         context_parts = []
         
         if diagnosis_state["symptoms"]:
@@ -360,12 +312,10 @@ class DiagnosticAgent:
             for h in diagnosis_state["hypotheses"]:
                 context_parts.append(f"  - {h.get('pathology', 'Inconnue')}: {h.get('probability', 'N/A')}")
         
-        # Ajouter les documents si disponibles
         if documents:
             context_parts.append("\n📄 DOCUMENTS FOURNIS:")
             for doc in documents:
                 context_parts.append(f"\n--- Document: {doc.get('name', 'Sans nom')} ({doc.get('type', 'unknown')}) ---")
-                # Limiter la taille du contenu pour éviter les tokens excessifs
                 content = doc.get('content', '')
                 if len(content) > 2000:
                     content = content[:2000] + "... [contenu tronqué]"
@@ -373,13 +323,12 @@ class DiagnosticAgent:
         
         if conversation_history:
             context_parts.append("\nHistorique de conversation:")
-            for msg in conversation_history[-5:]:  # Derniers 5 messages
+            for msg in conversation_history[-5:]:
                 context_parts.append(f"  {msg['role']}: {msg['content'][:100]}...")
         
         return "\n".join(context_parts) if context_parts else "Aucun contexte précédent"
     
     def _parse_react_response(self, response_text: str) -> dict:
-        """Parse une réponse ReAct"""
         result = {
             "THOUGHT": "",
             "ACTION": "",
@@ -410,14 +359,12 @@ class DiagnosticAgent:
         if current_section:
             result[current_section] = "\n".join(current_text).strip()
         
-        # Si RESPONSE est vide, utiliser tout le texte
         if not result["RESPONSE"]:
             result["RESPONSE"] = response_text
         
         return result
     
     def _extract_cot_reasoning(self, response_text: str) -> dict:
-        """Extrait le raisonnement CoT"""
         steps = []
         final_response = ""
         
@@ -441,7 +388,6 @@ class DiagnosticAgent:
         }
     
     def _parse_tot_response(self, response_text: str) -> dict:
-        """Parse une réponse ToT pour extraire les hypothèses"""
         hypotheses = []
         response = ""
         
@@ -461,7 +407,6 @@ class DiagnosticAgent:
                 continue
             
             if in_hypotheses and line.strip().startswith('-'):
-                # Parser une hypothèse
                 match = re.search(r'Pathologie\s+\d+:\s*([^-]+)\s*-\s*Probabilité:\s*([^-]+)\s*-\s*Justification:\s*(.+)', line)
                 if match:
                     hypotheses.append({
@@ -479,4 +424,3 @@ class DiagnosticAgent:
             "hypotheses": hypotheses,
             "response": response.strip()
         }
-
