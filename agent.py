@@ -340,49 +340,49 @@ class DiagnosticAgent:
             "RESPONSE": ""
         }
         
-        sections = ["THOUGHT", "ACTION", "OBSERVATION", "RESPONSE"]
-        current_section = None
-        current_text = []
+        text_upper = response_text.upper()
         
-        lines = response_text.split('\n')
+        thought_idx = text_upper.find("THOUGHT:")
+        action_idx = text_upper.find("ACTION:")
+        observation_idx = text_upper.find("OBSERVATION:")
+        response_idx = text_upper.find("RESPONSE:")
         
-        for i, line in enumerate(lines):
-            line_stripped = line.strip()
-            line_upper = line_stripped.upper()
-            found_section = None
-            
-            for section in sections:
-                if line_upper.startswith(section + ":") or line_upper.startswith(section + " :"):
-                    if current_section:
-                        result[current_section] = "\n".join(current_text).strip()
-                    current_section = section
-                    colon_pos = line.find(":")
-                    if colon_pos != -1:
-                        current_text = [line[colon_pos + 1:].strip()]
-                    else:
-                        current_text = []
-                    found_section = section
-                    break
-            
-            if not found_section and current_section:
-                if line_stripped:
-                    current_text.append(line)
-            elif not found_section and not current_section:
-                if line_stripped and not any(line_upper.startswith(s + ":") or line_upper.startswith(s + " :") for s in sections):
-                    if not result["RESPONSE"]:
-                        result["RESPONSE"] = line_stripped
-                    else:
-                        result["RESPONSE"] += "\n" + line_stripped
+        if thought_idx != -1:
+            end_idx = action_idx if action_idx != -1 else (observation_idx if observation_idx != -1 else (response_idx if response_idx != -1 else len(response_text)))
+            thought_text = response_text[thought_idx + len("THOUGHT:"):end_idx].strip()
+            result["THOUGHT"] = thought_text
         
-        if current_section:
-            result[current_section] = "\n".join(current_text).strip()
+        if action_idx != -1:
+            end_idx = observation_idx if observation_idx != -1 else (response_idx if response_idx != -1 else len(response_text))
+            action_text = response_text[action_idx + len("ACTION:"):end_idx].strip()
+            result["ACTION"] = action_text
         
-        if not result["RESPONSE"] or result["RESPONSE"] == response_text:
-            last_response_idx = response_text.upper().rfind("RESPONSE:")
-            if last_response_idx != -1:
-                result["RESPONSE"] = response_text[last_response_idx + len("RESPONSE:"):].strip()
-            else:
+        if observation_idx != -1:
+            end_idx = response_idx if response_idx != -1 else len(response_text)
+            observation_text = response_text[observation_idx + len("OBSERVATION:"):end_idx].strip()
+            result["OBSERVATION"] = observation_text
+        
+        if response_idx != -1:
+            response_text_only = response_text[response_idx + len("RESPONSE:"):].strip()
+            result["RESPONSE"] = response_text_only
+        else:
+            if not result["THOUGHT"] and not result["ACTION"] and not result["OBSERVATION"]:
                 result["RESPONSE"] = response_text
+            else:
+                result["RESPONSE"] = ""
+        
+        for key in result:
+            if result[key]:
+                lines = result[key].split('\n')
+                cleaned_lines = []
+                for line in lines:
+                    line_stripped = line.strip()
+                    if line_stripped:
+                        line_upper = line_stripped.upper()
+                        if not (line_upper.startswith("THOUGHT:") or line_upper.startswith("ACTION:") or 
+                                line_upper.startswith("OBSERVATION:") or line_upper.startswith("RESPONSE:")):
+                            cleaned_lines.append(line)
+                result[key] = "\n".join(cleaned_lines).strip()
         
         return result
     
