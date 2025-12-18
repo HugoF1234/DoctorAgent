@@ -94,7 +94,9 @@ class DiagnosticAgent:
         response_text = self._generate_content(prompt)
         
         reasoning_details = self._parse_react_response(response_text)
-        message = reasoning_details.get("RESPONSE", response_text)
+        message = reasoning_details.get("RESPONSE", "").strip()
+        if not message:
+            message = response_text
         
         if "hypotheses" in reasoning_details:
             diagnosis_state["hypotheses"] = reasoning_details["hypotheses"]
@@ -342,27 +344,45 @@ class DiagnosticAgent:
         current_section = None
         current_text = []
         
-        for line in response_text.split('\n'):
-            line_upper = line.strip().upper()
+        lines = response_text.split('\n')
+        
+        for i, line in enumerate(lines):
+            line_stripped = line.strip()
+            line_upper = line_stripped.upper()
             found_section = None
             
             for section in sections:
-                if line_upper.startswith(section + ":"):
+                if line_upper.startswith(section + ":") or line_upper.startswith(section + " :"):
                     if current_section:
                         result[current_section] = "\n".join(current_text).strip()
                     current_section = section
-                    current_text = [line.split(":", 1)[1].strip()] if ":" in line else []
+                    colon_pos = line.find(":")
+                    if colon_pos != -1:
+                        current_text = [line[colon_pos + 1:].strip()]
+                    else:
+                        current_text = []
                     found_section = section
                     break
             
             if not found_section and current_section:
-                current_text.append(line)
+                if line_stripped:
+                    current_text.append(line)
+            elif not found_section and not current_section:
+                if line_stripped and not any(line_upper.startswith(s + ":") or line_upper.startswith(s + " :") for s in sections):
+                    if not result["RESPONSE"]:
+                        result["RESPONSE"] = line_stripped
+                    else:
+                        result["RESPONSE"] += "\n" + line_stripped
         
         if current_section:
             result[current_section] = "\n".join(current_text).strip()
         
-        if not result["RESPONSE"]:
-            result["RESPONSE"] = response_text
+        if not result["RESPONSE"] or result["RESPONSE"] == response_text:
+            last_response_idx = response_text.upper().rfind("RESPONSE:")
+            if last_response_idx != -1:
+                result["RESPONSE"] = response_text[last_response_idx + len("RESPONSE:"):].strip()
+            else:
+                result["RESPONSE"] = response_text
         
         return result
     
