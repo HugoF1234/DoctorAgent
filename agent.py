@@ -79,17 +79,19 @@ class DiagnosticAgent:
         prompt = f"""
         Tu es un agent de diagnostic médical expert. Utilise la méthode ReAct (Reason + Act).
         
-        CONTEXTE ACTUEL:
+        IMPORTANT: Consulte attentivement TOUT l'historique de conversation ci-dessous. Ne perds aucune information des échanges précédents.
+        
+        CONTEXTE ACTUEL (inclut l'historique complet):
         {context}
         
         NOUVELLE INFORMATION DU PATIENT:
         {user_input}
         
         PROCÉDURE REACT:
-        1. PENSÉE (Thought) : Analyse les informations disponibles
-        2. ACTION (Action) : Décide de la prochaine action (poser une question, générer une hypothèse, demander clarification)
-        3. OBSERVATION (Observation) : Évalue ce que tu observes
-        4. RÉPONSE (Response) : Formule ta réponse au patient
+        1. PENSÉE (Thought) : Analyse TOUTES les informations disponibles, y compris tout l'historique de conversation
+        2. ACTION (Action) : Décide de la prochaine action en tenant compte de tout ce qui a été dit précédemment
+        3. OBSERVATION (Observation) : Évalue ce que tu observes en référence à l'historique complet
+        4. RÉPONSE (Response) : Formule ta réponse au patient en cohérence avec tout l'historique
         
         Format ta réponse ainsi:
         THOUGHT: [ton analyse]
@@ -123,19 +125,21 @@ class DiagnosticAgent:
         prompt = f"""
         Tu es un agent de diagnostic médical. Utilise le Chain of Thought (CoT) pour analyser étape par étape.
         
-        CONTEXTE:
+        IMPORTANT: Consulte attentivement TOUT l'historique de conversation ci-dessous. Ne perds aucune information des échanges précédents.
+        
+        CONTEXTE (inclut l'historique complet):
         {context}
         
         NOUVELLE INFORMATION:
         {user_input}
         
         PENSE ÉTAPE PAR ÉTAPE:
-        1. Analyse les symptômes mentionnés
-        2. Identifie les patterns et associations
-        3. Considère les pathologies possibles
-        4. Évalue la probabilité de chaque pathologie
-        5. Détermine quelles informations supplémentaires sont nécessaires
-        6. Formule ta réponse ou tes questions
+        1. Analyse TOUS les symptômes mentionnés dans l'historique complet
+        2. Identifie les patterns et associations en tenant compte de tout l'historique
+        3. Considère les pathologies possibles en référence à toutes les informations précédentes
+        4. Évalue la probabilité de chaque pathologie en utilisant tout le contexte
+        5. Détermine quelles informations supplémentaires sont nécessaires (sans répéter ce qui a déjà été demandé)
+        6. Formule ta réponse ou tes questions en cohérence avec tout l'historique
         
         Présente ton raisonnement étape par étape, puis donne ta réponse finale au patient.
         """
@@ -159,18 +163,20 @@ class DiagnosticAgent:
         prompt = f"""
         Tu es un agent de diagnostic médical. Utilise le Tree of Thoughts (ToT) pour explorer plusieurs pistes.
         
-        CONTEXTE:
+        IMPORTANT: Consulte attentivement TOUT l'historique de conversation ci-dessous. Ne perds aucune information des échanges précédents.
+        
+        CONTEXTE (inclut l'historique complet):
         {context}
         
         NOUVELLE INFORMATION:
         {user_input}
         
         MÉTHODE TOT:
-        1. GÉNÈRE 3-5 hypothèses de pathologies différentes
-        2. ÉVALUE chaque hypothèse (probabilité, cohérence, plausibilité)
+        1. GÉNÈRE 3-5 hypothèses de pathologies différentes en tenant compte de TOUT l'historique
+        2. ÉVALUE chaque hypothèse (probabilité, cohérence, plausibilité) en référence à toutes les informations précédentes
         3. ÉLAGUE : Garde seulement les 2-3 hypothèses les plus prometteuses
-        4. JUSTIFIE chaque hypothèse retenue
-        5. DÉTERMINE les questions à poser pour affiner le diagnostic
+        4. JUSTIFIE chaque hypothèse retenue en utilisant tout le contexte disponible
+        5. DÉTERMINE les questions à poser pour affiner le diagnostic (sans répéter ce qui a déjà été demandé)
         
         Format:
         HYPOTHÈSES GÉNÉRÉES:
@@ -205,13 +211,15 @@ class DiagnosticAgent:
         context = self._build_context(conversation_history, diagnosis_state, documents)
         
         initial_prompt = f"""
-        CONTEXTE:
+        IMPORTANT: Consulte attentivement TOUT l'historique de conversation ci-dessous. Ne perds aucune information des échanges précédents.
+        
+        CONTEXTE (inclut l'historique complet):
         {context}
         
         NOUVELLE INFORMATION:
         {user_input}
         
-        Génère une première analyse diagnostique basée sur ces informations.
+        Génère une première analyse diagnostique basée sur TOUTES ces informations, en tenant compte de tout l'historique de conversation.
         """
         
         initial_response = self.model.generate_content(initial_prompt)
@@ -221,35 +229,39 @@ class DiagnosticAgent:
         Tu es un agent de diagnostic médical. Critique cette première analyse et identifie:
         1. Les erreurs potentielles (hallucinations, logique incorrecte)
         2. Les informations manquantes
-        3. Les incohérences
+        3. Les incohérences avec l'historique complet de conversation
         4. Les améliorations possibles
+        
+        IMPORTANT: Vérifie que l'analyse tient compte de TOUT l'historique de conversation.
         
         PREMIÈRE ANALYSE:
         {initial_text}
         
-        CONTEXTE:
+        CONTEXTE COMPLET (inclut tout l'historique):
         {context}
         
         NOUVELLE INFORMATION:
         {user_input}
         
-        Liste les problèmes identifiés et suggère des corrections.
+        Liste les problèmes identifiés et suggère des corrections en tenant compte de tout l'historique.
         """
         
         critique_response = self.model.generate_content(critique_prompt)
         critique_text = critique_response.text
         
         corrected_prompt = f"""
+        IMPORTANT: Consulte attentivement TOUT l'historique de conversation ci-dessous.
+        
         PREMIÈRE ANALYSE:
         {initial_text}
         
         CRITIQUE:
         {critique_text}
         
-        CONTEXTE:
+        CONTEXTE COMPLET (inclut tout l'historique):
         {context}
         
-        Génère une version corrigée et améliorée de l'analyse diagnostique en tenant compte de la critique.
+        Génère une version corrigée et améliorée de l'analyse diagnostique en tenant compte de la critique ET de tout l'historique de conversation.
         """
         
         corrected_response = self.model.generate_content(corrected_prompt)
@@ -276,7 +288,9 @@ class DiagnosticAgent:
         
         if tot_result["reasoning_details"].get("hypotheses"):
             synthesis_prompt = f"""
-            Synthétise ces analyses pour donner une réponse finale cohérente au patient.
+            IMPORTANT: Consulte attentivement TOUT l'historique de conversation pour maintenir la cohérence.
+            
+            Synthétise ces analyses pour donner une réponse finale cohérente au patient en tenant compte de tout l'historique.
             
             ANALYSE CoT:
             {cot_result['reasoning_details']}
@@ -284,7 +298,10 @@ class DiagnosticAgent:
             HYPOTHÈSES ToT:
             {tot_result['reasoning_details']}
             
-            Formule une réponse claire et structurée.
+            CONTEXTE COMPLET (inclut tout l'historique):
+            {self._build_context(conversation_history, diagnosis_state, documents)}
+            
+            Formule une réponse claire et structurée qui est cohérente avec tout l'historique de conversation.
             """
             
             synthesis_response = self.model.generate_content(synthesis_prompt)
@@ -322,9 +339,11 @@ class DiagnosticAgent:
                 context_parts.append(content)
         
         if conversation_history:
-            context_parts.append("\nHistorique de conversation:")
-            for msg in conversation_history[-5:]:
-                context_parts.append(f"  {msg['role']}: {msg['content'][:100]}...")
+            context_parts.append("\nHISTORIQUE COMPLET DE LA CONVERSATION:")
+            for i, msg in enumerate(conversation_history, 1):
+                role_name = "PATIENT" if msg['role'] == 'user' else "AGENT"
+                content = msg['content']
+                context_parts.append(f"\n[{i}] {role_name}: {content}")
         
         return "\n".join(context_parts) if context_parts else "Aucun contexte précédent"
     
