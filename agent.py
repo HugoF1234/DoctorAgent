@@ -384,7 +384,16 @@ class DiagnosticAgent:
                         if not (line_upper.startswith("THOUGHT:") or line_upper.startswith("ACTION:") or 
                                 line_upper.startswith("OBSERVATION:") or line_upper.startswith("RESPONSE:")):
                             cleaned_lines.append(line)
-                result[key] = "\n".join(cleaned_lines).strip()
+                cleaned_text = "\n".join(cleaned_lines).strip()
+                
+                if key in ["THOUGHT", "ACTION", "OBSERVATION"]:
+                    sentences = cleaned_text.split('.')
+                    if len(sentences) > 3:
+                        cleaned_text = '. '.join(sentences[:3]) + '.'
+                    if len(cleaned_text) > 300:
+                        cleaned_text = cleaned_text[:300] + "..."
+                
+                result[key] = cleaned_text
         
         return result
     
