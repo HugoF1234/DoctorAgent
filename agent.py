@@ -77,20 +77,22 @@ class DiagnosticAgent:
         {user_input}
         
         PROCÉDURE REACT:
-        1. PENSÉE (Thought) : Analyse TOUTES les informations disponibles, y compris tout l'historique de conversation
-        2. ACTION (Action) : Décide de la prochaine action en tenant compte de tout ce qui a été dit précédemment
-        3. OBSERVATION (Observation) : Évalue ce que tu observes en référence à l'historique complet
-        4. RÉPONSE (Response) : Formule ta réponse au patient en cohérence avec tout l'historique
+        1. PENSÉE (Thought) : Analyse rapide en 1-2 phrases maximum
+        2. ACTION (Action) : Action en 1 phrase maximum
+        3. OBSERVATION (Observation) : Observation en 1-2 phrases maximum
+        4. RÉPONSE (Response) : Réponse au patient en 5-8 phrases maximum, directe et naturelle
         
         Format ta réponse ainsi:
-        THOUGHT: [ton analyse en 2-3 phrases maximum, très concis]
-        ACTION: [ton action en 1-2 phrases maximum, très concis]
-        OBSERVATION: [ton observation en 2-3 phrases maximum, très concis]
-        RESPONSE: [ta réponse complète au patient, détaillée et naturelle]
+        THOUGHT: [1-2 phrases max]
+        ACTION: [1 phrase max]
+        OBSERVATION: [1-2 phrases max]
+        RESPONSE: [5-8 phrases max, réponse directe et naturelle au patient]
         
-        IMPORTANT: THOUGHT, ACTION et OBSERVATION doivent être TRÈS COURTS (maximum 2-3 phrases chacun). Seule RESPONSE doit être détaillée.
-        
-        Si tu as assez d'informations, génère des hypothèses de pathologies avec leurs probabilités et justifications.
+        IMPORTANT: 
+        - THOUGHT, ACTION, OBSERVATION: TRÈS COURTS (1-2 phrases chacun)
+        - RESPONSE: Maximum 5-8 phrases, directe et naturelle
+        - Pas de tableaux, pas de listes détaillées, pas de sections numérotées
+        - Si tu as assez d'informations, mentionne brièvement 1-2 hypothèses principales avec probabilité
         """
         
         response_text = self._generate_content(prompt)
@@ -102,6 +104,13 @@ class DiagnosticAgent:
         
         if "hypotheses" in reasoning_details:
             diagnosis_state["hypotheses"] = reasoning_details["hypotheses"]
+        
+        if len(message) > 800:
+            sentences = message.split('.')
+            if len(sentences) > 8:
+                message = '. '.join(sentences[:8]) + '.'
+            if len(message) > 800:
+                message = message[:800] + "..."
         
         return {
             "message": message,
@@ -125,23 +134,28 @@ class DiagnosticAgent:
         NOUVELLE INFORMATION:
         {user_input}
         
-        PENSE ÉTAPE PAR ÉTAPE:
-        1. Analyse TOUS les symptômes mentionnés dans l'historique complet
-        2. Identifie les patterns et associations en tenant compte de tout l'historique
-        3. Considère les pathologies possibles en référence à toutes les informations précédentes
-        4. Évalue la probabilité de chaque pathologie en utilisant tout le contexte
-        5. Détermine quelles informations supplémentaires sont nécessaires (sans répéter ce qui a déjà été demandé)
-        6. Formule ta réponse ou tes questions en cohérence avec tout l'historique
+        PENSE ÉTAPE PAR ÉTAPE (en 3-4 étapes maximum, très concis):
+        1. Analyse rapide des symptômes
+        2. Pathologies possibles (1-2 principales)
+        3. Questions à poser (2-3 maximum)
         
-        Présente ton raisonnement étape par étape, puis donne ta réponse finale au patient.
+        IMPORTANT: Sois TRÈS CONCIS. Réponse finale au patient en 5-8 phrases maximum. Pas de tableaux, pas de listes détaillées. Réponse directe et naturelle.
         """
         
         response_text = self._generate_content(prompt)
         
         reasoning_details = self._extract_cot_reasoning(response_text)
         
+        message = reasoning_details.get("final_response", response_text)
+        if len(message) > 800:
+            sentences = message.split('.')
+            if len(sentences) > 8:
+                message = '. '.join(sentences[:8]) + '.'
+            if len(message) > 800:
+                message = message[:800] + "..."
+        
         return {
-            "message": reasoning_details.get("final_response", response_text),
+            "message": message,
             "reasoning_details": reasoning_details,
             "diagnosis_state": diagnosis_state
         }
@@ -162,24 +176,20 @@ class DiagnosticAgent:
         NOUVELLE INFORMATION:
         {user_input}
         
-        MÉTHODE TOT:
-        1. GÉNÈRE 3-5 hypothèses de pathologies différentes en tenant compte de TOUT l'historique
-        2. ÉVALUE chaque hypothèse (probabilité, cohérence, plausibilité) en référence à toutes les informations précédentes
-        3. ÉLAGUE : Garde seulement les 2-3 hypothèses les plus prometteuses
-        4. JUSTIFIE chaque hypothèse retenue en utilisant tout le contexte disponible
-        5. DÉTERMINE les questions à poser pour affiner le diagnostic (sans répéter ce qui a déjà été demandé)
+        MÉTHODE TOT (très concis):
+        1. GÉNÈRE 2-3 hypothèses principales
+        2. ÉLAGUE : Garde les 1-2 meilleures
+        3. RÉPONSE au patient en 5-8 phrases maximum
         
         Format:
-        HYPOTHÈSES GÉNÉRÉES:
-        - Pathologie 1: [nom] - Probabilité: [X%] - Justification: [raison]
-        - Pathologie 2: [nom] - Probabilité: [X%] - Justification: [raison]
-        ...
-        
-        HYPOTHÈSES RETENUES (après élagage):
-        - [Liste des meilleures hypothèses]
+        HYPOTHÈSES RETENUES:
+        - [Pathologie 1] ([X%])
+        - [Pathologie 2] ([X%])
         
         RÉPONSE AU PATIENT:
-        [Ta réponse]
+        [5-8 phrases max, réponse directe et naturelle]
+        
+        IMPORTANT: Réponse très concise, pas de tableaux, pas de listes détaillées.
         """
         
         response_text = self._generate_content(prompt)
@@ -189,8 +199,16 @@ class DiagnosticAgent:
         if "hypotheses" in reasoning_details:
             diagnosis_state["hypotheses"] = reasoning_details["hypotheses"]
         
+        message = reasoning_details.get("response", response_text)
+        if len(message) > 800:
+            sentences = message.split('.')
+            if len(sentences) > 8:
+                message = '. '.join(sentences[:8]) + '.'
+            if len(message) > 800:
+                message = message[:800] + "..."
+        
         return {
-            "message": reasoning_details.get("response", response_text),
+            "message": message,
             "reasoning_details": reasoning_details,
             "diagnosis_state": diagnosis_state
         }
@@ -209,7 +227,7 @@ class DiagnosticAgent:
         NOUVELLE INFORMATION:
         {user_input}
         
-        Génère une première analyse diagnostique basée sur TOUTES ces informations, en tenant compte de tout l'historique de conversation.
+        Génère une première analyse diagnostique CONCISE (5-8 phrases maximum) basée sur TOUTES ces informations.
         """
         
         initial_text = self._generate_content(initial_prompt)
@@ -249,10 +267,17 @@ class DiagnosticAgent:
         CONTEXTE COMPLET (inclut tout l'historique):
         {context}
         
-        Génère une version corrigée et améliorée de l'analyse diagnostique en tenant compte de la critique ET de tout l'historique de conversation.
+        Génère une version corrigée et améliorée de l'analyse diagnostique en 5-8 phrases maximum. Sois TRÈS CONCIS.
         """
         
         corrected_text = self._generate_content(corrected_prompt)
+        
+        if len(corrected_text) > 800:
+            sentences = corrected_text.split('.')
+            if len(sentences) > 8:
+                corrected_text = '. '.join(sentences[:8]) + '.'
+            if len(corrected_text) > 800:
+                corrected_text = corrected_text[:800] + "..."
         
         reasoning_details = {
             "initial_analysis": initial_text,
@@ -277,7 +302,7 @@ class DiagnosticAgent:
             synthesis_prompt = f"""
             IMPORTANT: Consulte attentivement TOUT l'historique de conversation pour maintenir la cohérence.
             
-            Synthétise ces analyses pour donner une réponse finale cohérente au patient en tenant compte de tout l'historique.
+            Synthétise ces analyses pour donner une réponse finale TRÈS CONCISE (5-8 phrases maximum) au patient.
             
             ANALYSE CoT:
             {cot_result['reasoning_details']}
@@ -288,10 +313,17 @@ class DiagnosticAgent:
             CONTEXTE COMPLET (inclut tout l'historique):
             {self._build_context(conversation_history, diagnosis_state, documents)}
             
-            Formule une réponse claire et structurée qui est cohérente avec tout l'historique de conversation.
+            Formule une réponse directe et naturelle en 5-8 phrases maximum. Pas de tableaux, pas de listes détaillées.
             """
             
             synthesis_text = self._generate_content(synthesis_prompt)
+            
+            if len(synthesis_text) > 800:
+                sentences = synthesis_text.split('.')
+                if len(sentences) > 8:
+                    synthesis_text = '. '.join(sentences[:8]) + '.'
+                if len(synthesis_text) > 800:
+                    synthesis_text = synthesis_text[:800] + "..."
             
             return {
                 "message": synthesis_text,
