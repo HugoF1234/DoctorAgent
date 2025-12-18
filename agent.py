@@ -83,10 +83,12 @@ class DiagnosticAgent:
         4. RÉPONSE (Response) : Formule ta réponse au patient en cohérence avec tout l'historique
         
         Format ta réponse ainsi:
-        THOUGHT: [ton analyse]
-        ACTION: [ton action]
-        OBSERVATION: [ton observation]
-        RESPONSE: [ta réponse au patient]
+        THOUGHT: [ton analyse en 2-3 phrases maximum, très concis]
+        ACTION: [ton action en 1-2 phrases maximum, très concis]
+        OBSERVATION: [ton observation en 2-3 phrases maximum, très concis]
+        RESPONSE: [ta réponse complète au patient, détaillée et naturelle]
+        
+        IMPORTANT: THOUGHT, ACTION et OBSERVATION doivent être TRÈS COURTS (maximum 2-3 phrases chacun). Seule RESPONSE doit être détaillée.
         
         Si tu as assez d'informations, génère des hypothèses de pathologies avec leurs probabilités et justifications.
         """
