@@ -6,7 +6,7 @@ from document_processor import process_multiple_files
 
 load_dotenv()
 
-GEMINI_API_KEY = "AIzaSyAzbzoCR5eV_e3N4TqbV2SexxyJzF3ftfQ"
+MISTRAL_API_KEY = "G0jCsVe8rS3C22UesrpbVwxEPd71xuDb"
 
 st.set_page_config(
     page_title="Agent de Diagnostic Médical",
@@ -15,7 +15,7 @@ st.set_page_config(
 )
 
 if "agent" not in st.session_state:
-    st.session_state.agent = DiagnosticAgent(api_key=GEMINI_API_KEY)
+    st.session_state.agent = DiagnosticAgent(api_key=MISTRAL_API_KEY)
 if "conversation" not in st.session_state:
     st.session_state.conversation = []
 if "diagnosis_state" not in st.session_state:

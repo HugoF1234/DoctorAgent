@@ -75,7 +75,7 @@ Combine plusieurs techniques pour une analyse plus robuste :
 ### Prérequis
 
 - Python 3.8 ou supérieur
-- Une clé API Google Gemini (obtenable sur [Google AI Studio](https://makersuite.google.com/app/apikey))
+- Une clé API Mistral AI (obtenable sur [Mistral AI Platform](https://console.mistral.ai/))
 
 ### Étapes d'installation
 
@@ -118,7 +118,7 @@ pip install -r requirements.txt
 
 5. **Configurer la clé API**
 
-La clé API est déjà configurée dans le code. Si vous souhaitez utiliser une autre clé, modifiez la variable `GEMINI_API_KEY` dans le fichier `app.py`.
+La clé API est déjà configurée dans le code. Si vous souhaitez utiliser une autre clé, modifiez la variable `MISTRAL_API_KEY` dans le fichier `app.py`.
 
 6. **Lancer l'application**
 
@@ -191,7 +191,7 @@ Agent : [Analyse avec ReAct]
 ## Technologies Utilisées
 
 - **Streamlit** : Interface utilisateur interactive
-- **Google Gemini API** : Modèle de langage pour le raisonnement
+- **Mistral AI API** : Modèle de langage pour le raisonnement
 - **PyPDF2** : Traitement des fichiers PDF
 - **Python** : Langage de programmation
 

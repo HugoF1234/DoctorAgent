@@ -1,7 +1,16 @@
 class ReasoningTechniques:
     
-    def __init__(self, model):
-        self.model = model
+    def __init__(self, client, model_name: str):
+        self.client = client
+        self.model = model_name
+    
+    def _generate_content(self, prompt: str) -> str:
+        messages = [{"role": "user", "content": prompt}]
+        response = self.client.chat.complete(
+            model=self.model,
+            messages=messages
+        )
+        return response.choices[0].message.content
     
     def chain_of_thought(self, prompt: str) -> str:
         cot_prompt = f"""
@@ -12,8 +21,7 @@ class ReasoningTechniques:
         2. Identifie les variables
         3. Calcule la solution
         """
-        response = self.model.generate_content(cot_prompt)
-        return response.text
+        return self._generate_content(cot_prompt)
     
     def tree_of_thoughts(self, prompt: str, num_branches: int = 3) -> list:
         branches = []
@@ -24,10 +32,10 @@ class ReasoningTechniques:
             
             Explore une piste de solution différente. Piste {i+1}:
             """
-            response = self.model.generate_content(branch_prompt)
+            solution = self._generate_content(branch_prompt)
             branches.append({
                 "branch": i + 1,
-                "solution": response.text
+                "solution": solution
             })
         
         evaluation_prompt = f"""
@@ -38,12 +46,12 @@ class ReasoningTechniques:
         Identifie la meilleure piste et explique pourquoi.
         """
         
-        evaluation = self.model.generate_content(evaluation_prompt)
+        evaluation = self._generate_content(evaluation_prompt)
         
         return {
             "branches": branches,
-            "evaluation": evaluation.text,
-            "best_branch": evaluation.text
+            "evaluation": evaluation,
+            "best_branch": evaluation
         }
     
     def react_loop(self, initial_prompt: str, max_iterations: int = 3) -> dict:
@@ -59,10 +67,10 @@ class ReasoningTechniques:
             OBSERVATION: [Observe le résultat]
             """
             
-            response = self.model.generate_content(thought_prompt)
+            response = self._generate_content(thought_prompt)
             history.append({
                 "iteration": i + 1,
-                "response": response.text
+                "response": response
             })
         
         return {
@@ -83,22 +91,22 @@ class ReasoningTechniques:
         Liste les problèmes et erreurs.
         """
         
-        critique = self.model.generate_content(critique_prompt)
+        critique = self._generate_content(critique_prompt)
         
         correction_prompt = f"""
         Réponse initiale:
         {initial_response}
         
         Critique:
-        {critique.text}
+        {critique}
         
         Génère une version corrigée.
         """
         
-        corrected = self.model.generate_content(correction_prompt)
+        corrected = self._generate_content(correction_prompt)
         
         return {
             "initial": initial_response,
-            "critique": critique.text,
-            "corrected": corrected.text
+            "critique": critique,
+            "corrected": corrected
         }

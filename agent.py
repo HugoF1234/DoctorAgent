@@ -1,4 +1,4 @@
-import google.generativeai as genai
+from mistralai import Mistral
 from reasoning import ReasoningTechniques
 import json
 import re
@@ -6,27 +6,17 @@ import re
 class DiagnosticAgent:
     
     def __init__(self, api_key: str):
-        genai.configure(api_key=api_key)
-        
-        try:
-            models = genai.list_models()
-            model_name = None
-            for model in models:
-                if 'generateContent' in model.supported_generation_methods:
-                    model_name = model.name.replace('models/', '')
-                    break
-            
-            if model_name:
-                self.model = genai.GenerativeModel(model_name)
-            else:
-                self.model = genai.GenerativeModel()
-        except Exception as e:
-            try:
-                self.model = genai.GenerativeModel('gemini-pro')
-            except:
-                self.model = genai.GenerativeModel()
-        
-        self.reasoning = ReasoningTechniques(self.model)
+        self.client = Mistral(api_key=api_key)
+        self.model = "mistral-large-latest"
+        self.reasoning = ReasoningTechniques(self.client, self.model)
+    
+    def _generate_content(self, prompt: str) -> str:
+        messages = [{"role": "user", "content": prompt}]
+        response = self.client.chat.complete(
+            model=self.model,
+            messages=messages
+        )
+        return response.choices[0].message.content
     
     def process_user_input(self, user_input: str, reasoning_technique: str, 
                           conversation_history: list, diagnosis_state: dict, 
@@ -60,8 +50,7 @@ class DiagnosticAgent:
         """
         
         try:
-            response = self.model.generate_content(prompt)
-            symptoms_text = response.text.strip()
+            symptoms_text = self._generate_content(prompt).strip()
             
             if "aucun" in symptoms_text.lower():
                 return []
@@ -102,8 +91,7 @@ class DiagnosticAgent:
         Si tu as assez d'informations, génère des hypothèses de pathologies avec leurs probabilités et justifications.
         """
         
-        response = self.model.generate_content(prompt)
-        response_text = response.text
+        response_text = self._generate_content(prompt)
         
         reasoning_details = self._parse_react_response(response_text)
         message = reasoning_details.get("RESPONSE", response_text)
@@ -144,8 +132,7 @@ class DiagnosticAgent:
         Présente ton raisonnement étape par étape, puis donne ta réponse finale au patient.
         """
         
-        response = self.model.generate_content(prompt)
-        response_text = response.text
+        response_text = self._generate_content(prompt)
         
         reasoning_details = self._extract_cot_reasoning(response_text)
         
@@ -191,8 +178,7 @@ class DiagnosticAgent:
         [Ta réponse]
         """
         
-        response = self.model.generate_content(prompt)
-        response_text = response.text
+        response_text = self._generate_content(prompt)
         
         reasoning_details = self._parse_tot_response(response_text)
         
@@ -222,8 +208,7 @@ class DiagnosticAgent:
         Génère une première analyse diagnostique basée sur TOUTES ces informations, en tenant compte de tout l'historique de conversation.
         """
         
-        initial_response = self.model.generate_content(initial_prompt)
-        initial_text = initial_response.text
+        initial_text = self._generate_content(initial_prompt)
         
         critique_prompt = f"""
         Tu es un agent de diagnostic médical. Critique cette première analyse et identifie:
@@ -246,8 +231,7 @@ class DiagnosticAgent:
         Liste les problèmes identifiés et suggère des corrections en tenant compte de tout l'historique.
         """
         
-        critique_response = self.model.generate_content(critique_prompt)
-        critique_text = critique_response.text
+        critique_text = self._generate_content(critique_prompt)
         
         corrected_prompt = f"""
         IMPORTANT: Consulte attentivement TOUT l'historique de conversation ci-dessous.
@@ -264,8 +248,7 @@ class DiagnosticAgent:
         Génère une version corrigée et améliorée de l'analyse diagnostique en tenant compte de la critique ET de tout l'historique de conversation.
         """
         
-        corrected_response = self.model.generate_content(corrected_prompt)
-        corrected_text = corrected_response.text
+        corrected_text = self._generate_content(corrected_prompt)
         
         reasoning_details = {
             "initial_analysis": initial_text,
@@ -304,14 +287,14 @@ class DiagnosticAgent:
             Formule une réponse claire et structurée qui est cohérente avec tout l'historique de conversation.
             """
             
-            synthesis_response = self.model.generate_content(synthesis_prompt)
+            synthesis_text = self._generate_content(synthesis_prompt)
             
             return {
-                "message": synthesis_response.text,
+                "message": synthesis_text,
                 "reasoning_details": {
                     "cot_analysis": cot_result["reasoning_details"],
                     "tot_hypotheses": tot_result["reasoning_details"],
-                    "synthesis": synthesis_response.text
+                    "synthesis": synthesis_text
                 },
                 "diagnosis_state": diagnosis_state
             }
